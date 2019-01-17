@@ -106,6 +106,8 @@ import { dom } from "@polymer/polymer/lib/legacy/polymer.dom.js";
 import { mixinBehaviors } from "@polymer/polymer/lib/legacy/class.js";
 import { PolymerElement, html } from "@polymer/polymer/polymer-element.js";
 
+import moment from 'moment/src/moment.js';
+
 class AppDatepicker extends
   mixinBehaviors([NeonAnimationRunnerBehavior], PolymerElement) {
   static get template() {
@@ -142,6 +144,11 @@ class AppDatepicker extends
         height: 384px;
         max-height: 384px;
       }
+
+      .datepicker.with-week-numbers {
+        width: 343px;
+      }
+
       .datepicker.with-buttons {
         height: 431px;
         max-height: 431px;
@@ -650,7 +657,7 @@ class AppDatepicker extends
       }
     </style>
 
-    <div id="dp" class="datepicker">
+    <div id="dp" class="datepicker"  class$="datepicker[[_isWeekNumbered(showWeekNumbers)]]">
       <iron-selector class="selected-fulldate" selected="{{_activeView}}" attr-for-selected="view" on-selected-changed="_onIronSelectorSelectedChanged" fallback-selection="calendar">
         <div id="showSelectedYear" class="selected-year" tabindex="0" view="year" aria-label="year view">
           [[_showSelectedYear]]
@@ -675,6 +682,11 @@ class AppDatepicker extends
           <neon-animatable id="daysOfWeekAnimation">
             <div id="daysOfWeek" class="days-of-week">
               <template is="dom-repeat" items="[[_daysOfWeek]]" index-as="index" strip-whitespace="">
+
+                <template is="dom-if" if="[[_showWeekLabel(index)]]">
+                   <div class="each-days-of-week">Wk</div>
+                </template>
+
                 <div class="each-days-of-week">
                   [[item]]
                 </div>
@@ -686,6 +698,13 @@ class AppDatepicker extends
           <neon-animatable id="daysOfMonthAnimation">
             <div id="daysOfMonth" class="days-of-month" on-tap="_chooseDaysOfMonth">
               <template is="dom-repeat" items="[[_daysOfMonth]]" index-as="index" strip-whitespace="">
+
+                <template is="dom-if" if="[[_showWeek(index, item, _activeYear, _activeMonth)]]">
+                  <div style="border-right:1px lightgrey dashed;" class="each-days-of-month is-disabled-day is-non-selectable">
+                    [[_showWeek(index, item, _activeYear, _activeMonth)]]
+                  </div>
+                </template>
+
                 <div class\$="each-days-of-month[[_isToday(item.index, _activeYear, _activeMonth)]][[_isEmptyDate(item.index)]][[_isChosenDaysOfMonth(item.index, _selectedYear, _selectedMonth, _selectedDate)]][[_isDisableDays(index, firstDayOfWeek, minDate, maxDate, item.index, _shiftedDisableDays.*, disableDates.*)]]" index="[[index]]" date="[[item.index]]" tabindex\$="[[_shouldTabIndex(index, firstDayOfWeek, minDate, maxDate, item.index, _shiftedDisableDays.*, disableDates.*)]]" aria-disabled\$="[[_shouldAriaDisabled(index, firstDayOfWeek, minDate, maxDate, item.index, _shiftedDisableDays.*, disableDates.*)]]" aria-label\$="[[item.index]]">
                   [[item.date]]
                 </div>
@@ -841,6 +860,15 @@ class AppDatepicker extends
       // Always reset selected date on dialog close. See https://github.com/motss/app-datepicker/issues/74.
       alwaysResetSelectedDateOnDialogClose: Boolean,
 
+      // Display the buttons
+      withButtons: {
+        type: Boolean,
+        value: !1
+      },
+      // Show the weeknumbers
+      showWeekNumbers: Boolean,
+
+
       // month names, literally.
       _monthNames: {
         type: Array,
@@ -939,6 +967,21 @@ class AppDatepicker extends
     ];
   }
 
+  _isWeekNumbered (showWeekNumbers) {
+    return this.showWeekNumbers ? ' with-week-numbers' : '';
+  }
+  _showWeekLabel(index){
+    return this.showWeekNumbers && index == 0;
+  }
+  _showWeek(idx, item, _activeYear, _activeMonth){
+    if(this.showWeekNumbers){
+      if(idx == 0 || (item.date && idx % 7 == 0)){
+        return moment(_activeYear+' '+(_activeMonth+1)+' '+(idx == 0 ? 1 : item.date), "YYYY MM DD").isoWeek();
+      }
+    }
+    return 0;
+  }
+
   connectedCallback() {
     super.connectedCallback();
     if (!this.noAnimation) {
@@ -993,7 +1036,9 @@ class AppDatepicker extends
         this._updateDistributedButtonInkColorCustomProp(effectiveChildren[i], "#737373");
       }
       // update to a new height for datepicker if paper-buttons present.
-      this.$.dp.classList.add("with-buttons");
+      if(this.withButtons){
+        this.$.dp.classList.add("with-buttons");
+      }
     } else {
       this.$.dp.classList.remove("with-buttons");
     }
@@ -1415,7 +1460,7 @@ class AppDatepicker extends
 
   // split capturing group of format into year, month and date.
   _computeSeparateFormat(_format) {
-    var re = /^(yyyy|yy|m{1,4}|d{1,2}|do)\W+(yyyy|yy|m{1,4}|d{1,2}|do)\W+(yyyy|yy|m{1,4}|d{1,2}|do)$/g;
+    var re = /^(yyyy|yy|m{1,4}|d{1,2}|do)\W+(yyyy|yy|m{1,4}|d{1,2}|w{2}|do)\W+(yyyy|yy|m{1,4}|d{1,2}|do)$/g;
     var m = re.exec(_format);
     var _temp = {};
     var _tempArr = [];
@@ -1433,12 +1478,14 @@ class AppDatepicker extends
           _temp.m = matched;
         } else if (matched.indexOf("d") >= 0) {
           _temp.d = matched;
+        } else if (matched.indexOf('w') >= 0) {
+          _temp.w = matched;
         }
       }
     }
 
     // Only set _format if the new format is valid.
-    if ("d" in _temp && "m" in _temp && "y" in _temp) {
+    if ('d' in _temp && 'y' in _temp && ('m' in _temp || 'w' in _temp)) {
       this.set("_format", _temp);
     }
 
@@ -1456,6 +1503,15 @@ class AppDatepicker extends
     var _formattedMonth = this._monthNames[_selectedMonth];
     var _formattedDate = _selectedDate;
     var _finalFormatted = this.format;
+
+
+    var _formattedWeek = '';
+    if(_finalFormatted.indexOf('w') != -1){
+      var mom = new moment(_selectedYear+' '+(_selectedMonth+1)+' '+_selectedDate, "YYYY MM DD");
+      _formattedWeek = mom.isoWeek();
+      _formattedDate = mom.day() == 0 ? 7 : mom.day();
+    }
+
     // compute new formatted year.
     if (_format.y === "yy") {
       _formattedYear = _selectedYear % 100;
@@ -1477,13 +1533,14 @@ class AppDatepicker extends
         _suffixOrdinal = "th";
       }
       _formattedDate = _formattedDate + _suffixOrdinal;
-    } else if (_format.d === "dd") {
+    }else if (_format.d === 'dd' && _finalFormatted.indexOf('w') == -1) {
       _formattedDate = this._padStart(_formattedDate, 2, "0");
     }
     // set formatted value with user defined symbols.
     _finalFormatted = _finalFormatted.replace(_format.y, _formattedYear);
     _finalFormatted = _finalFormatted.replace(_format.m, _formattedMonth);
     _finalFormatted = _finalFormatted.replace(_format.d, _formattedDate);
+    _finalFormatted = _finalFormatted.replace(_format.w, _formattedWeek);
 
     return _finalFormatted;
   }
@@ -1581,7 +1638,7 @@ class AppDatepicker extends
     // 3. 2016 Jan 31
     // 4. 2016 Jan 3
     // 5. 2016/13/13
-    function validateDate(_id, _showLongDate) {
+    function validateDate(_id, _showLongDate, _format) {
       var _res = {
         valid: !1,
         result: ""
@@ -1608,18 +1665,26 @@ class AppDatepicker extends
       // From here onwards, to check for short input date.
       var _re1 = /^(\d{4})\W+(\d{1,2})\W+(\d{1,2})$/i;
       var _re2 = /^(\d{4})[ ](\w+)[ ](\d{1,2})$/i;
+      var _re3 = /^(\d{2,4})[\/-]?(\d{1,2})[\/-]?(\d{1,4})$/i;
 
       var _validWithRe1 = _re1.exec(_id);
       var _validWithRe2 = _re2.exec(_id);
+      var _validWithRe3 = _re3.exec(_id);
+      var _validWithWeek = _format && _format.indexOf('ww') != -1;
 
-      if (_validWithRe1 === null && _validWithRe2 === null) {
+      if (_validWithRe1 === null && _validWithRe2 === null && (!_validWithWeek || _validWithRe3 == null) && _validWithRe3 == null) {
         return _res;
       } else {
         var _resultToDate = null;
-        if (_validWithRe1 === null) {
+        if(_validWithWeek){
+          //if this code is still running in 21xx and this fails, I'm Napoleon !
+          _resultToDate = moment().year(_validWithRe3[1].length > 2 ? _validWithRe3[1] : '20'+_validWithRe3[1]).day(_validWithRe3[3]==7?0:_validWithRe3[3]).week(_validWithRe3[3]==7 ? parseInt(_validWithRe3[2])+1 : _validWithRe3[2])._d;
+        } else if (_validWithRe2 != null) {
           _resultToDate = new Date(_validWithRe2[1] + " " + _validWithRe2[2] + " " + _validWithRe2[3]);
-        } else if (_validWithRe2 === null) {
-          _resultToDate = new Date(+_validWithRe1[1], +_validWithRe1[2] - 1, +_validWithRe1[3]);
+        } else if (_validWithRe1 != null) {
+          _resultToDate = new Date(_validWithRe1[1], _validWithRe1[2] - 1, _validWithRe1[3]);
+        } else if(_validWithRe3 != null){
+          _resultToDate = moment(_id, _format.toUpperCase())._d;
         }
 
         return {
@@ -1633,7 +1698,7 @@ class AppDatepicker extends
     var _yy = 0;
     var _mm = 0;
     var _dd = 0;
-    var _isValidDate = validateDate(_inputDate, _showLongDate);
+    var _isValidDate = validateDate(_inputDate, _showLongDate, this.format);
 
     if (_isValidDate.valid) {
       if (this.alwaysResetSelectedDateOnDialogClose) {

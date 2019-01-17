@@ -47,9 +47,12 @@ class AppDatepickerDialog extends
       theme="[[theme]]"
       locale="[[locale]]"
       always-reset-selected-date-on-dialog-close="[[alwaysResetSelectedDateOnDialogClose]]"
+      with-buttons=[[withButtons]]
+      auto-update-date="[[autoUpdateDate]]"
+      show-week-numbers="[[showWeekNumbers]]">
       >
         <paper-button slot="dismiss-button" noink="[[noAnimation]]" dialog-dismiss>[[ dismissLabel ]]</paper-button>
-        <paper-button slot="confirm-button" noink="[[noAnimation]]" dialog-confirm>[[ confirmLabel ]]</paper-button>
+        <paper-button id="confirmButton" slot="confirm-button" noink="[[noAnimation]]" dialog-confirm>[[ confirmLabel ]]</paper-button>
     </app-datepicker>`;
   }
 
@@ -66,7 +69,8 @@ class AppDatepickerDialog extends
       date: {
         type: String,
         notify: true,
-        readOnly: true
+        readOnly: true,
+        observer: '_autoCloseDialog'
       },
       invalidDate: {
         type: Boolean,
@@ -88,6 +92,10 @@ class AppDatepickerDialog extends
         value: "cancel"
       },
       alwaysResetSelectedDateOnDialogClose: Boolean,
+      withButtons: Boolean,
+      autoUpdateDate: Boolean,
+      autoCloseDialog: Boolean,
+      showWeekNumbers: Boolean,
 
       _readOnlyDate: String,
       _readOnlyInvalidDate: String,
@@ -99,6 +107,11 @@ class AppDatepickerDialog extends
     this.addEventListener("neon-animation-finish", this._onNeonAnimationFinish.bind(this));
     this.addEventListener("iron-overlay-closed", this._alwaysResetSelectedDate.bind(this));
   }
+
+  _autoCloseDialog(){
+     if(this.autoCloseDialog)
+       this.$.confirmButton.click();
+   }
 
   _alwaysResetSelectedDate() {
     if (this.alwaysResetSelectedDateOnDialogClose) {
