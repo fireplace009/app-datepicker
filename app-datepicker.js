@@ -331,6 +331,18 @@ class AppDatepicker extends
         margin-left: 3px;
         margin-right: 3px;
       }
+
+      /* selection was not shown */
+      .chosen-days-of-month {
+        border-radius: 50%;
+        background-color: var(--app-datepicker-selected-day-bg, #009688);
+        color: var(--app-datepicker-selected-day-color, #fff);
+      }
+      .days-of-month > .chosen-days-of-month.each-days-of-month.is-today {
+        color: var(--app-datepicker-today-color, #fff);
+      }
+      /** **/
+
       div > .days-of-month > .each-days-of-month.chosen-days-of-month {
         border-radius: 50%;
         background-color: var(--app-datepicker-selected-day-bg, #009688);
@@ -1506,16 +1518,23 @@ class AppDatepicker extends
 
 
     var _formattedWeek = '';
+    var mom = new moment(_selectedYear+' '+(_selectedMonth+1)+' '+_selectedDate, "YYYY MM DD");
     if(_finalFormatted.indexOf('w') != -1){
-      var mom = new moment(_selectedYear+' '+(_selectedMonth+1)+' '+_selectedDate, "YYYY MM DD");
       _formattedWeek = mom.isoWeek();
       _formattedDate = mom.day() == 0 ? 7 : mom.day();
     }
 
+    //special volvo case
+    if(_finalFormatted.indexOf('w') != -1 && mom.month() == 11 && mom.isoWeek() == 1) {
+      _formattedYear = _format.y === "yy" ? (_selectedYear + 1) % 100 : _selectedYear + 1;
+    } else if (_finalFormatted.indexOf('w') != -1 && mom.month() == 0 && mom.isoWeek() >= 52){
+      _formattedYear = _format.y === "yy" ? (_selectedYear - 1) % 100 : _selectedYear - 1;
+    }
     // compute new formatted year.
-    if (_format.y === "yy") {
+    else if (_format.y === "yy") {
       _formattedYear = _selectedYear % 100;
     }
+
     // compute new formatted month.
     if (_format.m === "mmm") {
       _formattedMonth = _formattedMonth.slice(0, 3);
@@ -1678,7 +1697,7 @@ class AppDatepicker extends
         var _resultToDate = null;
         if(_validWithWeek){
           //if this code is still running in 21xx and this fails, I'm Napoleon !
-          _resultToDate = moment().year(_validWithRe3[1].length > 2 ? _validWithRe3[1] : '20'+_validWithRe3[1]).day(_validWithRe3[3]==7?0:_validWithRe3[3]).week(_validWithRe3[3]==7 ? parseInt(_validWithRe3[2])+1 : _validWithRe3[2])._d;
+          _resultToDate = moment().year(_validWithRe3[1].length > 2 ? _validWithRe3[1] : '20'+_validWithRe3[1]).isoWeekday(parseInt(_validWithRe3[3])).isoWeek(parseInt(_validWithRe3[2]))._d;
         } else if (_validWithRe2 != null) {
           _resultToDate = new Date(_validWithRe2[1] + " " + _validWithRe2[2] + " " + _validWithRe2[3]);
         } else if (_validWithRe1 != null) {
