@@ -362,8 +362,8 @@ class AppDatepicker extends
         outline: none;
       }
       /* Date hover styling */
-      .days-of-month > .each-days-of-month:hover:not(.is-disabled-day):not(.is-non-selectable):not(.chosen-days-of-month),
-      .days-of-month > .each-days-of-month:focus:not(.is-disabled-day):not(.is-non-selectable):not(.chosen-days-of-month) {
+      .days-of-month > .each-days-of-month:hover:not(.is-disabled-day):not(.is-non-selectable),
+      .days-of-month > .each-days-of-month:focus:not(.is-disabled-day):not(.is-non-selectable) {
         color: var(--app-datepicker-date-hover-color, #f5f5f5);
         background-color: var(--app-datepicker-date-hover-background-color, #80cbc4);
         border-radius: 50%;
@@ -1254,6 +1254,14 @@ class AppDatepicker extends
     ) {
       // This will trigger _isChosenDaysOfMonth to recompute style.
       this.set("_chosenDaysOfMonth", _target.index);
+
+      //check if current selected date is selected again -> we'll want to close anyhow
+      if(this.get("_selectedYear") == this._activeYear && this.get("_selectedDate") == _target.date &&  this.get("_selectedMonth") == this._activeMonth){
+        //dirty fix to trigger everything else
+        var dd = this.date;
+        this._setDate('');
+        this._setDate(dd);
+      }
 
       this.set("_selectedYear", this._activeYear);
       this.set("_selectedDate", _target.date);
